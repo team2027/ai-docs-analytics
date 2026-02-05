@@ -49,6 +49,9 @@ Set `AI_ANALYTICS_ENDPOINT` to your own endpoint URL.
 - Events are sent **server-side** from Vercel Edge (or your server)
 - Visitor IP addresses **never reach** the analytics endpoint
 - Only headers (user-agent, accept) and page info (host, path) are sent
+- **No cookies, no fingerprinting, no personal identifiers**
+
+This middleware collects no personally identifiable information (PII). Because there are no cookies, no IP forwarding, and no user identifiers, it generally does not trigger privacy policy or cookie-consent requirements under GDPR, CCPA, or similar regulations. That said, you should verify with your own legal counsel, especially under strict EU interpretations.
 
 ## Detection
 
