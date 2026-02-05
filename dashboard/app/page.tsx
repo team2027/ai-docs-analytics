@@ -42,9 +42,10 @@ interface FeedItem {
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#6366f1"];
 
-async function queryAnalytics<T>(sql: string): Promise<T[]> {
+async function queryAnalytics<T>(queryName: string, host?: string): Promise<T[]> {
   const url = new URL(`${API_URL}/query`);
-  url.searchParams.set("sql", sql);
+  url.searchParams.set("q", queryName);
+  if (host) url.searchParams.set("host", host);
   const res = await fetch(url.toString());
   const json = await res.json();
   return json.data || [];
@@ -60,31 +61,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async (host: string) => {
-    const hostFilter = host ? `AND blob1 = '${host}'` : "";
-    
     const [agentsData, pagesData, feedData] = await Promise.all([
-      queryAnalytics<AgentData>(`
-        SELECT blob3 as agent_type, SUM(_sample_interval) as visits
-        FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0 ${hostFilter}
-        GROUP BY agent_type
-        ORDER BY visits DESC
-      `),
-      queryAnalytics<PageData>(`
-        SELECT blob1 as host, blob2 as path, SUM(_sample_interval) as ai_visits
-        FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double1 = 1 AND double2 = 0 ${hostFilter}
-        GROUP BY host, path
-        ORDER BY ai_visits DESC
-        LIMIT 10
-      `),
-      queryAnalytics<FeedItem>(`
-        SELECT timestamp, blob1 as host, blob2 as path, blob3 as agent_type
-        FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '1' DAY AND double2 = 0 ${hostFilter}
-        ORDER BY timestamp DESC
-        LIMIT 20
-      `),
+      queryAnalytics<AgentData>("agents", host || undefined),
+      queryAnalytics<PageData>("pages", host || undefined),
+      queryAnalytics<FeedItem>("feed", host || undefined),
     ]);
     setAgents(agentsData);
     setPages(pagesData);
@@ -98,13 +78,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function init() {
-      const sitesData = await queryAnalytics<{ host: string; is_ai: number; visits: string }>(`
-        SELECT blob1 as host, double1 as is_ai, SUM(_sample_interval) as visits
-        FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0
-        GROUP BY host, is_ai
-        ORDER BY visits DESC
-      `);
+      const sitesData = await queryAnalytics<{ host: string; is_ai: number; visits: string }>("sites");
       const siteMap = new Map<string, { ai: number; human: number }>();
       for (const row of sitesData) {
         const existing = siteMap.get(row.host) || { ai: 0, human: 0 };

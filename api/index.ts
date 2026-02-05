@@ -106,6 +106,46 @@ app.post("/track", async (c) => {
   return c.json({ ok: true, filtered: filterReason || undefined });
 });
 
+const ALLOWED_QUERIES: Record<string, string> = {
+  default: `
+    SELECT blob1 as host, blob3 as agent_type, SUM(_sample_interval) as visits
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0
+    GROUP BY host, agent_type
+    ORDER BY visits DESC
+    LIMIT 100
+  `,
+  sites: `
+    SELECT blob1 as host, double1 as is_ai, SUM(_sample_interval) as visits
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0
+    GROUP BY host, is_ai
+    ORDER BY visits DESC
+  `,
+  agents: `
+    SELECT blob3 as agent_type, SUM(_sample_interval) as visits
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0
+    GROUP BY agent_type
+    ORDER BY visits DESC
+  `,
+  pages: `
+    SELECT blob1 as host, blob2 as path, SUM(_sample_interval) as ai_visits
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '7' DAY AND double1 = 1 AND double2 = 0
+    GROUP BY host, path
+    ORDER BY ai_visits DESC
+    LIMIT 10
+  `,
+  feed: `
+    SELECT timestamp, blob1 as host, blob2 as path, blob3 as agent_type
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '1' DAY AND double2 = 0
+    ORDER BY timestamp DESC
+    LIMIT 20
+  `,
+};
+
 app.get("/query", async (c) => {
   const accountId = c.env.CF_ACCOUNT_ID;
   const apiToken = c.env.CF_API_TOKEN;
@@ -114,18 +154,18 @@ app.get("/query", async (c) => {
     return c.json({ error: "missing CF_ACCOUNT_ID or CF_API_TOKEN" }, 500);
   }
 
-  const sql = c.req.query("sql") || `
-    SELECT 
-      blob1 as host,
-      blob3 as agent_type,
-      SUM(_sample_interval) as visits
-    FROM ai_docs_visits
-    WHERE timestamp > NOW() - INTERVAL '7' DAY
-      AND double2 = 0
-    GROUP BY host, agent_type
-    ORDER BY visits DESC
-    LIMIT 100
-  `;
+  const queryName = c.req.query("q") || "default";
+  const host = c.req.query("host");
+  
+  const baseSql = ALLOWED_QUERIES[queryName];
+  if (!baseSql) {
+    return c.json({ error: "invalid query", allowed: Object.keys(ALLOWED_QUERIES) }, 400);
+  }
+
+  let sql = baseSql;
+  if (host) {
+    sql = sql.replace("WHERE ", `WHERE blob1 = '${host.replace(/'/g, "''")}' AND `);
+  }
 
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`,
