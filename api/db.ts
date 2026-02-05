@@ -14,15 +14,21 @@ export interface Env {
 }
 
 // RAW_EVENTS schema (immutable):
+// index1: event_id
 // blob1: host, blob2: path, blob3: user_agent, blob4: accept_header, blob5: country
-// index1: host
 
 // VISITS schema (processed):
+// index1: event_id
 // blob1: host, blob2: path, blob3: category, blob4: agent, blob5: country
-// double1: is_filtered, index1: host
+// double1: is_filtered
+
+export function generateEventId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function writeRawEvent(
   dataset: AnalyticsEngineDataset,
+  eventId: string,
   host: string,
   path: string,
   userAgent: string,
@@ -31,12 +37,13 @@ export function writeRawEvent(
 ) {
   dataset.writeDataPoint({
     blobs: [host, path, userAgent.slice(0, 500), acceptHeader.slice(0, 500), country],
-    indexes: [host],
+    indexes: [eventId],
   });
 }
 
 export function writeVisit(
   dataset: AnalyticsEngineDataset,
+  eventId: string,
   host: string,
   path: string,
   category: string,
@@ -47,6 +54,6 @@ export function writeVisit(
   dataset.writeDataPoint({
     blobs: [host, path, category, agent, country],
     doubles: [filtered ? 1 : 0],
-    indexes: [host],
+    indexes: [eventId],
   });
 }

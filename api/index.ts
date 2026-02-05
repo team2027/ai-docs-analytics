@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { classify, isPageView } from "./detect";
-import { writeRawEvent, writeVisit, type Env } from "./db";
+import { generateEventId, writeRawEvent, writeVisit, type Env } from "./db";
 import { runQuery, QUERIES } from "./queries";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -22,9 +22,10 @@ app.post("/track", async (c) => {
   }
 
   const { category, agent, filtered } = classify(userAgent, accept, host);
+  const eventId = generateEventId();
 
-  writeRawEvent(c.env.RAW_EVENTS, host, path, userAgent, accept, country);
-  writeVisit(c.env.VISITS, host, path, category, agent, country, filtered);
+  writeRawEvent(c.env.RAW_EVENTS, eventId, host, path, userAgent, accept, country);
+  writeVisit(c.env.VISITS, eventId, host, path, category, agent, country, filtered);
 
   return c.json({ ok: true, category, agent, filtered: filtered || undefined });
 });

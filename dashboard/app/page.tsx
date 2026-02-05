@@ -23,21 +23,23 @@ interface SiteData {
 }
 
 interface AgentData {
-  agent_type: string;
+  agent: string;
   visits: number;
 }
 
 interface PageData {
   host: string;
   path: string;
-  ai_visits: number;
+  agent: string;
+  visits: number;
 }
 
 interface FeedItem {
   timestamp: string;
   host: string;
   path: string;
-  agent_type: string;
+  category: string;
+  agent: string;
 }
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#6366f1"];
@@ -78,15 +80,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function init() {
-      const sitesData = await queryAnalytics<{ host: string; is_ai: number; visits: string }>("sites");
+      const sitesData = await queryAnalytics<{ host: string; category: string; visits: string }>("sites");
       const siteMap = new Map<string, { ai: number; human: number }>();
       for (const row of sitesData) {
         const existing = siteMap.get(row.host) || { ai: 0, human: 0 };
-        if (row.is_ai === 1) {
+        if (row.category === "coding-agent") {
           existing.ai = Number(row.visits);
-        } else {
+        } else if (row.category === "human") {
           existing.human = Number(row.visits);
         }
+        // ignore 'bot' and 'browsing-agent' categories
         siteMap.set(row.host, existing);
       }
       const formatted: SiteData[] = Array.from(siteMap.entries()).map(([host, data]) => ({
@@ -182,14 +185,14 @@ export default function Dashboard() {
               <Pie
                 data={agents}
                 dataKey="visits"
-                nameKey="agent_type"
+                nameKey="agent"
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={({ agent_type }) => agent_type}
+                label={({ agent }) => agent}
               >
                 {agents.map((a, i) => (
-                  <Cell key={a.agent_type} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={a.agent} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip
@@ -212,7 +215,7 @@ export default function Dashboard() {
                 <span className="text-zinc-300 truncate max-w-xs">
                   {p.path}
                 </span>
-                <span className="text-blue-500 font-mono">{p.ai_visits}</span>
+                <span className="text-blue-500 font-mono">{p.visits}</span>
               </div>
             ))}
           </div>
@@ -228,7 +231,7 @@ export default function Dashboard() {
               >
                 <div>
                   <span className="text-purple-400 font-mono mr-2">
-                    {f.agent_type}
+                    {f.agent}
                   </span>
                   <span className="text-zinc-400 truncate">{f.path}</span>
                 </div>

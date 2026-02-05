@@ -44,11 +44,27 @@ export const QUERIES: Record<string, string> = {
     LIMIT 50
   `,
   raw: `
-    SELECT timestamp, blob1 as host, blob2 as path, blob3 as user_agent, blob4 as accept_header
+    SELECT timestamp, index1 as event_id, blob1 as host, blob2 as path, blob3 as user_agent, blob4 as accept_header
     FROM ai_docs_raw_events
     WHERE timestamp > NOW() - INTERVAL '1' DAY
     ORDER BY timestamp DESC
     LIMIT 100
+  `,
+  debug: `
+    SELECT 
+      r.timestamp,
+      r.index1 as event_id,
+      r.blob1 as host,
+      r.blob2 as path,
+      r.blob3 as user_agent,
+      r.blob4 as accept_header,
+      v.blob3 as category,
+      v.blob4 as agent
+    FROM ai_docs_raw_events r
+    JOIN ai_docs_visits v ON r.index1 = v.index1
+    WHERE r.timestamp > NOW() - INTERVAL '1' DAY
+    ORDER BY r.timestamp DESC
+    LIMIT 50
   `,
 };
 
