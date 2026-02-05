@@ -8,13 +8,15 @@ export function withAIAnalytics(middleware?: NextMiddleware): NextMiddleware {
       ? await middleware(request, event)
       : NextResponse.next();
 
-    trackVisit({
-      host: request.headers.get("host") || request.nextUrl.host,
-      path: request.nextUrl.pathname,
-      userAgent: request.headers.get("user-agent") || "",
-      accept: request.headers.get("accept") || "",
-      country: request.geo?.country || "unknown",
-    }).catch(() => {});
+    event.waitUntil(
+      trackVisit({
+        host: request.headers.get("host") || request.nextUrl.host,
+        path: request.nextUrl.pathname,
+        userAgent: request.headers.get("user-agent") || "",
+        accept: request.headers.get("accept") || "",
+        country: request.geo?.country || "unknown",
+      }).catch(() => {}),
+    );
 
     return response;
   };
