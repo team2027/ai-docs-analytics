@@ -66,14 +66,14 @@ export default function Dashboard() {
       queryAnalytics<AgentData>(`
         SELECT blob3 as agent_type, SUM(_sample_interval) as visits
         FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY ${hostFilter}
+        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0 ${hostFilter}
         GROUP BY agent_type
         ORDER BY visits DESC
       `),
       queryAnalytics<PageData>(`
         SELECT blob1 as host, blob2 as path, SUM(_sample_interval) as ai_visits
         FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double1 = 1 ${hostFilter}
+        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double1 = 1 AND double2 = 0 ${hostFilter}
         GROUP BY host, path
         ORDER BY ai_visits DESC
         LIMIT 10
@@ -81,7 +81,7 @@ export default function Dashboard() {
       queryAnalytics<FeedItem>(`
         SELECT timestamp, blob1 as host, blob2 as path, blob3 as agent_type
         FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '1' DAY ${hostFilter}
+        WHERE timestamp > NOW() - INTERVAL '1' DAY AND double2 = 0 ${hostFilter}
         ORDER BY timestamp DESC
         LIMIT 20
       `),
@@ -101,7 +101,7 @@ export default function Dashboard() {
       const sitesData = await queryAnalytics<{ host: string; is_ai: number; visits: string }>(`
         SELECT blob1 as host, double1 as is_ai, SUM(_sample_interval) as visits
         FROM ai_docs_visits
-        WHERE timestamp > NOW() - INTERVAL '7' DAY
+        WHERE timestamp > NOW() - INTERVAL '7' DAY AND double2 = 0
         GROUP BY host, is_ai
         ORDER BY visits DESC
       `);

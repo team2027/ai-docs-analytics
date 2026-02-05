@@ -88,25 +88,22 @@ app.post("/track", async (c) => {
   const path = body.path || "/";
   const country = body.country || "unknown";
 
+  let filterReason = "";
   if (!isPageView(accept)) {
-    return c.json({ ok: true, filtered: "not-page-view" });
-  }
-
-  if (!isAI && isBot(userAgent)) {
-    return c.json({ ok: true, filtered: "bot" });
-  }
-
-  if (!isAI && isPreviewHost(host)) {
-    return c.json({ ok: true, filtered: "preview" });
+    filterReason = "not-page-view";
+  } else if (!isAI && isBot(userAgent)) {
+    filterReason = "bot";
+  } else if (!isAI && isPreviewHost(host)) {
+    filterReason = "preview";
   }
 
   c.env.ANALYTICS.writeDataPoint({
-    blobs: [host, path, agentType, country, isAI ? userAgent.slice(0, 500) : ""],
-    doubles: [isAI ? 1 : 0],
+    blobs: [host, path, agentType, country, userAgent.slice(0, 500), filterReason],
+    doubles: [isAI ? 1 : 0, filterReason ? 1 : 0],
     indexes: [host],
   });
 
-  return c.json({ ok: true });
+  return c.json({ ok: true, filtered: filterReason || undefined });
 });
 
 app.get("/query", async (c) => {
@@ -124,6 +121,7 @@ app.get("/query", async (c) => {
       SUM(_sample_interval) as visits
     FROM ai_docs_visits
     WHERE timestamp > NOW() - INTERVAL '7' DAY
+      AND double2 = 0
     GROUP BY host, agent_type
     ORDER BY visits DESC
     LIMIT 100
