@@ -10,19 +10,44 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.use("/*", cors());
 
+function detectIsAI(accept: string): boolean {
+  const wantsMarkdown = accept.includes("text/markdown");
+  const wantsPlainText = accept.includes("text/plain") && !accept.startsWith("text/html");
+  return wantsMarkdown || wantsPlainText;
+}
+
+function detectAgentType(userAgent: string, isAI: boolean): string {
+  if (!isAI) return "human";
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("claude-code") || ua.includes("claudecode")) return "claude-code";
+  if (ua.includes("cursor")) return "cursor";
+  if (ua.includes("windsurf")) return "windsurf";
+  if (ua.includes("opencode")) return "opencode";
+  if (ua.includes("aider")) return "aider";
+  if (ua.includes("continue")) return "continue";
+  if (ua.includes("copilot")) return "copilot";
+  if (ua.includes("cline")) return "cline";
+  return "unknown-ai";
+}
+
 app.post("/track", async (c) => {
   const body = await c.req.json();
+
+  const accept = body.accept_header || body.accept || "";
+  const userAgent = body.user_agent || body.ua || "";
+  const isAI = body.is_ai !== undefined ? Boolean(body.is_ai) : detectIsAI(accept);
+  const agentType = body.agent_type || detectAgentType(userAgent, isAI);
 
   const event = {
     ts: body.ts || new Date().toISOString().slice(0, 19).replace("T", " "),
     host: body.host || "unknown",
     path: body.path || "/",
-    accept: body.accept?.slice(0, 500) || "",
-    ua: body.ua?.slice(0, 500) || "",
+    accept: accept.slice(0, 500),
+    ua: userAgent.slice(0, 500),
     country: body.country || "unknown",
     city: body.city || "unknown",
-    agent_type: body.agent_type || "unknown-ai",
-    is_ai: body.is_ai ?? 1,
+    agent_type: agentType,
+    is_ai: isAI ? 1 : 0,
   };
 
   const datasource = c.env.TINYBIRD_DATASOURCE || "ai_agent_events";
