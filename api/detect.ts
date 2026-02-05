@@ -14,7 +14,7 @@ const BOT_PATTERNS = [
   "pingdom", "uptimerobot", "statuscake", "site24x7", "newrelic", "datadog", "checkly", "freshping",
   "vercel-healthcheck", "vercel-edge-functions",
   "wget", "curl", "httpie", "python-requests", "go-http-client",
-  "scrapy", "httpclient", "java/", "okhttp", "axios", "node-fetch", "undici",
+  "scrapy", "httpclient", "java/", "okhttp", "node-fetch", "undici",
 ];
 
 const PREVIEW_HOST_PATTERNS = [
@@ -37,28 +37,23 @@ export function classify(userAgent: string, acceptHeader: string, host: string):
   const accept = acceptHeader.toLowerCase();
   const wantsMarkdown = accept.includes("text/markdown");
 
-  // Explicit coding agents (by user-agent)
-  if (ua.includes("claude-code") || ua.includes("claudecode")) {
-    return { category: "coding-agent", agent: "claude-code", filtered: false };
+  // text/markdown = definitely a coding agent
+  if (wantsMarkdown) {
+    // axios = claude code
+    if (ua.includes("axios")) {
+      return { category: "coding-agent", agent: "claude-code", filtered: false };
+    }
+    // q= weights in accept = opencode
+    if (accept.includes("q=")) {
+      return { category: "coding-agent", agent: "opencode", filtered: false };
+    }
+    // fallback
+    return { category: "coding-agent", agent: "unknown-coding-agent", filtered: false };
   }
-  if (ua.includes("codex")) {
-    return { category: "coding-agent", agent: "codex", filtered: false };
-  }
-  if (ua.includes("opencode")) {
-    return { category: "coding-agent", agent: "opencode", filtered: false };
-  }
+
+  // ChatGPT-User = codex (could be browsing, but treating as codex for now)
   if (ua.includes("chatgpt-user")) {
     return { category: "coding-agent", agent: "codex", filtered: false };
-  }
-
-  // Claude Code webfetch: axios + text/markdown (no q= weights)
-  if (ua.includes("axios") && wantsMarkdown && !accept.includes("q=")) {
-    return { category: "coding-agent", agent: "claude-code", filtered: false };
-  }
-
-  // OpenCode: text/plain + text/markdown with q= weights
-  if (accept.includes("text/plain") && wantsMarkdown && accept.includes("q=")) {
-    return { category: "coding-agent", agent: "opencode", filtered: false };
   }
 
   // Browsing agents
@@ -69,12 +64,7 @@ export function classify(userAgent: string, acceptHeader: string, host: string):
     return { category: "browsing-agent", agent: "perplexity-comet", filtered: true };
   }
 
-  // Generic text/markdown = unknown coding agent
-  if (wantsMarkdown) {
-    return { category: "coding-agent", agent: "unknown-coding-agent", filtered: false };
-  }
-
-  // Bots (only if not requesting markdown)
+  // Bots
   if (BOT_PATTERNS.some(pattern => ua.includes(pattern))) {
     return { category: "bot", agent: detectBotName(ua), filtered: true };
   }
