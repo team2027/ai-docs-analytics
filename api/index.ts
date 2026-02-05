@@ -92,10 +92,17 @@ function classify(userAgent: string, acceptHeader: string, host: string): Classi
     return { category: "coding-agent", agent: "opencode", filtered: false };
   }
 
-  // 2. Browsing agents (by user-agent)
+  // 2. Codex web browsing (uses ChatGPT-User under the hood)
   if (ua.includes("chatgpt-user")) {
-    return { category: "browsing-agent", agent: "chatgpt-user", filtered: true };
+    return { category: "coding-agent", agent: "codex", filtered: false };
   }
+
+  // 3. OpenCode detection (specific Accept header pattern)
+  if (accept.includes("text/plain") && accept.includes("text/markdown") && accept.includes("q=")) {
+    return { category: "coding-agent", agent: "opencode", filtered: false };
+  }
+
+  // 4. Browsing agents (by user-agent)
   if (ua.includes("claude/1.0") || (ua.includes("claude") && ua.includes("compatible"))) {
     return { category: "browsing-agent", agent: "claude-computer-use", filtered: true };
   }
@@ -103,7 +110,7 @@ function classify(userAgent: string, acceptHeader: string, host: string): Classi
     return { category: "browsing-agent", agent: "perplexity-comet", filtered: true };
   }
 
-  // 3. Accept: text/markdown = coding agent (catches axios, node-fetch used by coding tools)
+  // 5. Accept: text/markdown = coding agent (catches axios, node-fetch used by coding tools)
   if (wantsMarkdown) {
     return { category: "coding-agent", agent: "unknown-coding-agent", filtered: false };
   }
