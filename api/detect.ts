@@ -79,7 +79,7 @@ export function classify(userAgent: string, acceptHeader: string, host: string):
 
 export function isPageView(accept: string): boolean {
   const a = accept.toLowerCase();
-  return a.includes("text/html") || a.includes("text/markdown") || a.includes("text/plain");
+  return a.includes("text/html") || a.includes("text/markdown");
 }
 
 // Tests
