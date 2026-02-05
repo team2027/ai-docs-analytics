@@ -1,93 +1,83 @@
 # AI Docs Analytics
 
-Track AI coding agents (Claude Code, Cursor, Windsurf, etc.) visiting your documentation.
+Track AI coding agents (Claude Code, Codex, OpenCode, etc.) visiting your documentation.
 
 ## How It Works
 
-AI coding agents send `Accept: text/markdown` header when fetching docs - browsers never do this. We detect this signal at the edge and stream events to Tinybird for real-time analytics.
+AI coding agents send `Accept: text/markdown` header when fetching docs - browsers don't. We detect this signal and store events in Cloudflare Analytics Engine.
 
 ## Architecture
 
 ```
-[Your Docs Site] → [CF Worker] → [Tinybird] → [Dashboard]
-                   (detection)    (storage)    (visualization)
+[Your Docs Site] → [CF Worker API] → [CF Analytics Engine] → [Dashboard]
+     middleware        /track            storage              Next.js
 ```
 
-## Setup
+## Detection
 
-### 1. Create Tinybird Workspace
+| Agent | Detection Method |
+|-------|-----------------|
+| claude-code | `claude-code` in user-agent |
+| codex | `codex` in UA, or `chatgpt-user` in UA |
+| opencode | `opencode` in UA, or Accept has `text/plain` + `text/markdown` + `q=` |
+| unknown-coding-agent | `text/markdown` in Accept header |
 
-1. Sign up at [tinybird.co](https://tinybird.co)
-2. Create a new workspace
-3. Install Tinybird CLI: `pip install tinybird-cli`
-4. Authenticate: `tb auth`
+Filtered (not counted in stats):
+- Bots/crawlers (googlebot, gptbot, etc.)
+- Browsing agents (claude-computer-use, perplexity-comet)
 
-### 2. Deploy Data Sources & Pipes
+## Test Your Agent
 
 ```bash
-cd ai-docs-analytics
-tb push datasources/ai_agent_events.datasource
-tb push pipes/*.pipe
+curl https://ai-docs-analytics-api.theisease.workers.dev/detect
 ```
 
-### 3. Get Your Token
-
-```bash
-tb token ls
-```
-
-Copy your admin token or create a new one with append permissions.
-
-### 4. Deploy the Worker
-
-See [ai-docs-tracker-cf](https://github.com/caffeinum/ai-docs-tracker-cf) repo.
-
-Set environment variables:
-- `TINYBIRD_TOKEN` - your Tinybird token
-- `TINYBIRD_DATASOURCE` - `ai_agent_events` (default)
-- `TRACK_ALL` - `true` to also track human visits (for comparison)
-
-## API Endpoints
-
-After deploying pipes, you get these endpoints:
-
-| Endpoint | Description | Parameters |
-|----------|-------------|------------|
-| `/v0/pipes/events_by_site.json` | Events grouped by site | `days` (default: 7) |
-| `/v0/pipes/events_timeseries.json` | Time series data | `days`, `host` |
-| `/v0/pipes/top_pages.json` | Top pages by AI visits | `days`, `host`, `limit` |
-| `/v0/pipes/agent_breakdown.json` | Breakdown by agent type | `days`, `host` |
-| `/v0/pipes/realtime_feed.json` | Live feed of AI visits | `host`, `limit` |
-
-Query with:
-```bash
-curl "https://api.tinybird.co/v0/pipes/events_by_site.json?token=YOUR_TOKEN&days=7"
-```
-
-## Event Schema
-
+Returns how your request would be classified:
 ```json
 {
-  "ts": "2024-01-15 10:30:00",
-  "host": "docs.example.com",
-  "path": "/api/authentication",
-  "accept": "text/markdown, text/plain",
-  "ua": "...",
-  "country": "US",
-  "city": "San Francisco",
-  "agent_type": "claude-code",
-  "is_ai": 1
+  "category": "coding-agent",
+  "agent": "opencode",
+  "headers": { "user_agent": "...", "accept": "..." }
 }
 ```
 
-## Detected Agents
+## API Endpoints
 
-- `claude-code` - Anthropic's Claude Code CLI
-- `cursor` - Cursor IDE
-- `windsurf` - Codeium's Windsurf
-- `opencode` - OpenCode CLI
-- `aider` - Aider CLI
-- `continue` - Continue.dev
-- `copilot` - GitHub Copilot
-- `unknown-ai` - AI agent (Accept header detected, unknown UA)
-- `human` - Regular browser traffic
+**Base URL:** `https://ai-docs-analytics-api.theisease.workers.dev`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/track` | POST | Record a visit |
+| `/detect` | GET | Test classification with your headers |
+| `/query?q=agents` | GET | Coding agent breakdown |
+| `/query?q=sites` | GET | Visits by site |
+| `/query?q=pages` | GET | Top pages by AI visits |
+| `/query?q=feed` | GET | Recent visits feed |
+| `/health` | GET | Health check |
+
+## Project Structure
+
+```
+ai-docs-analytics/
+├── api/                 # CF Worker (Hono)
+│   ├── index.ts         # Detection logic + endpoints
+│   └── wrangler.toml    # CF config
+└── dashboard/           # Next.js dashboard
+    └── app/page.tsx     # Visualization
+```
+
+## Development
+
+```bash
+# API
+cd api && npm install && npx wrangler dev
+
+# Dashboard
+cd dashboard && npm install && npm run dev
+```
+
+## Deploy
+
+```bash
+cd api && npx wrangler deploy
+```
