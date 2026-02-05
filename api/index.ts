@@ -9,6 +9,37 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.use("/*", cors());
 
+const BOT_PATTERNS = [
+  "googlebot", "bingbot", "yandexbot", "baiduspider", "duckduckbot",
+  "slurp", "facebookexternalhit", "linkedinbot", "twitterbot",
+  "applebot", "semrushbot", "ahrefsbot", "mj12bot", "dotbot",
+  "petalbot", "bytespider", "gptbot", "claudebot", "anthropic-ai",
+  "pingdom", "uptimerobot", "statuscake", "site24x7", "newrelic",
+  "datadog", "checkly", "freshping",
+  "vercel-healthcheck", "vercel-edge-functions",
+  "wget", "curl", "httpie", "python-requests", "go-http-client",
+  "scrapy", "httpclient", "java/", "okhttp", "axios",
+  "node-fetch", "undici",
+];
+
+const PREVIEW_HOST_PATTERNS = [
+  ".vercel.app",
+  ".netlify.app", 
+  ".pages.dev",
+  "localhost",
+  "127.0.0.1",
+];
+
+function isBot(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  return BOT_PATTERNS.some(pattern => ua.includes(pattern));
+}
+
+function isPreviewHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return PREVIEW_HOST_PATTERNS.some(pattern => h.includes(pattern));
+}
+
 function detectIsAI(accept: string): boolean {
   const wantsMarkdown = accept.includes("text/markdown");
   const wantsPlainText = accept.includes("text/plain") && !accept.startsWith("text/html");
@@ -38,6 +69,14 @@ app.post("/track", async (c) => {
   const agentType = body.agent_type || detectAgentType(userAgent, isAI);
   const host = body.host || "unknown";
   const path = body.path || "/";
+
+  if (!isAI && isBot(userAgent)) {
+    return c.json({ ok: true, filtered: "bot" });
+  }
+
+  if (!isAI && isPreviewHost(host)) {
+    return c.json({ ok: true, filtered: "preview" });
+  }
 
   const distinctId = isAI ? `${host}:${agentType}` : `${host}:human`;
 
