@@ -3,6 +3,7 @@ DESCRIPTION >
 
 NODE events_timeseries_node
 SQL >
+    %
     SELECT
         toStartOfHour(timestamp) as hour,
         host,

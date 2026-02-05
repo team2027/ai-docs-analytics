@@ -3,6 +3,7 @@ DESCRIPTION >
 
 NODE top_pages_node
 SQL >
+    %
     SELECT
         host,
         path,

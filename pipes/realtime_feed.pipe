@@ -3,6 +3,7 @@ DESCRIPTION >
 
 NODE realtime_feed_node
 SQL >
+    %
     SELECT
         timestamp,
         host,

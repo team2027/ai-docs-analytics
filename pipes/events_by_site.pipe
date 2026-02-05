@@ -3,6 +3,7 @@ DESCRIPTION >
 
 NODE events_by_site_node
 SQL >
+    %
     SELECT
         host,
         countIf(is_ai_agent = 1) as ai_visits,

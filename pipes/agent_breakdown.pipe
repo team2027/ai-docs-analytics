@@ -3,6 +3,7 @@ DESCRIPTION >
 
 NODE agent_breakdown_node
 SQL >
+    %
     SELECT
         agent_type,
         count() as visits,
