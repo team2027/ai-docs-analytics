@@ -9,8 +9,7 @@
 </p>
 
 <p align="center">
-  A lightweight, open source library to detect and track AI coding agents visiting your docs.<br/>
-  Understand the shift happening in your user base.
+  A lightweight, open source library to detect and track AI coding agents visiting your docs.
 </p>
 
 <p align="center">
@@ -132,5 +131,5 @@ MIT — use it however you want.
 ---
 
 <p align="center">
-  Built by <a href="https://github.com/team2027">team2027</a>
+  Built by <a href="https://github.com/team2027">team2027</a> · <a href="https://twitter.com/2027dev">@2027dev</a>
 </p>
