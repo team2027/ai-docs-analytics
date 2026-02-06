@@ -2,86 +2,135 @@
   <img src="logo.png" alt="2027 Track" width="120" />
 </p>
 
-# 2027 Track
+<h1 align="center">2027 Track</h1>
 
-Track AI coding agents (Claude Code, Codex, OpenCode, etc.) visiting your documentation.
+<p align="center">
+  <strong>Know who's using your product: humans or agents</strong>
+</p>
+
+<p align="center">
+  A lightweight, open source library to detect and track AI coding agents visiting your docs.<br/>
+  Understand the shift happening in your user base.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/2027-track"><img src="https://img.shields.io/npm/v/2027-track" alt="npm" /></a>
+  <a href="https://github.com/team2027/track/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
+</p>
+
+---
+
+## Quick Start
+
+```bash
+npm install 2027-track
+```
+
+```ts
+// middleware.ts (Next.js)
+import { withAIAnalytics } from "2027-track/next";
+
+export default withAIAnalytics();
+
+export const config = {
+  matcher: ["/((?!api|_next|admin).*)",],
+};
+```
+
+That's it. AI agent visits are now tracked.
 
 ## How It Works
 
-AI coding agents send `Accept: text/markdown` header when fetching docs - browsers don't. We detect this signal and store events in Cloudflare Analytics Engine.
-
-## Architecture
+AI coding agents (Claude Code, Codex, OpenCode) send `Accept: text/markdown` when fetching docs — browsers never do. We detect this signal and classify the visitor.
 
 ```
-[Your Docs Site] → [CF Worker API] → [CF Analytics Engine] → [Dashboard]
-     middleware        /track            storage              Next.js
+[Your Site] → [2027-track middleware] → [Analytics API] → [Your Dashboard]
 ```
 
 ## Detection
 
-| Agent | Detection Method |
-|-------|-----------------|
-| claude-code | `claude-code` in user-agent |
-| codex | `codex` in UA, or `chatgpt-user` in UA |
-| opencode | `opencode` in UA, or Accept has `text/plain` + `text/markdown` + `q=` |
-| unknown-coding-agent | `text/markdown` in Accept header |
+| Agent | Signal |
+|-------|--------|
+| Claude Code | `axios` user-agent + `text/markdown` accept |
+| OpenCode | `text/markdown` with `q=` quality weights |
+| Codex | `ChatGPT-User` user-agent |
+| Unknown AI | `text/markdown` in accept (fallback) |
 
-Filtered (not counted in stats):
-- Bots/crawlers (googlebot, gptbot, etc.)
-- Browsing agents (claude-computer-use, perplexity-comet)
+Bots and crawlers (Googlebot, GPTBot, etc.) are automatically filtered.
 
-## Test Your Agent
+## Test Detection
+
+See how your request gets classified:
 
 ```bash
 curl https://ai-docs-analytics-api.theisease.workers.dev/detect
 ```
 
-Returns how your request would be classified:
 ```json
-{
-  "category": "coding-agent",
-  "agent": "opencode",
-  "headers": { "user_agent": "...", "accept": "..." }
-}
+{"category": "coding-agent", "agent": "opencode"}
 ```
 
-## API Endpoints
+## Privacy
 
-**Base URL:** `https://ai-docs-analytics-api.theisease.workers.dev`
+- Events sent **server-side** from your edge/server — visitor IPs never reach us
+- No cookies, no fingerprinting, no PII
+- Only: host, path, user-agent, accept header, country
+- Fully open source — audit the code yourself
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/track` | POST | Record a visit |
-| `/detect` | GET | Test classification with your headers |
-| `/query?q=agents` | GET | Coding agent breakdown |
-| `/query?q=sites` | GET | Visits by site |
-| `/query?q=pages` | GET | Top pages by AI visits |
-| `/query?q=feed` | GET | Recent visits feed |
-| `/health` | GET | Health check |
+## Self-Hosting
+
+Don't want to send data to our API? Self-host everything:
+
+```bash
+# Clone and deploy your own API
+git clone https://github.com/team2027/track
+cd track/api
+npx wrangler deploy
+```
+
+Set custom endpoint:
+```bash
+AI_ANALYTICS_ENDPOINT=https://your-worker.workers.dev/track
+```
+
+Set to empty to disable entirely:
+```bash
+AI_ANALYTICS_ENDPOINT=""
+```
+
+## API Reference
+
+**Hosted API:** `https://ai-docs-analytics-api.theisease.workers.dev`
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /track` | Record a visit |
+| `GET /detect` | Test your headers |
+| `GET /query?q=agents` | Agent breakdown |
+| `GET /query?q=sites` | Visits by site |
+| `GET /query?q=feed` | Recent visits |
 
 ## Project Structure
 
 ```
-ai-docs-analytics/
-├── api/                 # CF Worker (Hono)
-│   ├── index.ts         # Detection logic + endpoints
-│   └── wrangler.toml    # CF config
-└── dashboard/           # Next.js dashboard
-    └── app/page.tsx     # Visualization
+track/
+├── api/                  # Cloudflare Worker
+│   ├── detect.ts         # Classification logic
+│   ├── index.ts          # API routes
+│   └── wrangler.toml     # CF config
+├── packages/middleware/  # npm package (2027-track)
+│   └── src/
+│       ├── index.ts      # Core tracking
+│       └── next.ts       # Next.js wrapper
+└── dashboard/            # Analytics UI (coming soon)
 ```
 
-## Development
+## License
 
-```bash
-# API
-cd api && npm install && npx wrangler dev
+MIT — use it however you want.
 
-# Dashboard
-cd dashboard && npm install && npm run dev
-```
+---
 
-## Deploy
-
-```bash
-cd api && npx wrangler deploy
-```
+<p align="center">
+  Built by <a href="https://github.com/team2027">team2027</a>
+</p>
