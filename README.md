@@ -1,4 +1,8 @@
-# AI Docs Analytics
+<p align="center">
+  <img src="logo.png" alt="2027 Track" width="120" />
+</p>
+
+# 2027 Track
 
 Track AI coding agents (Claude Code, Codex, OpenCode, etc.) visiting your documentation.
 
