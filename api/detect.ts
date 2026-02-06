@@ -12,7 +12,7 @@ const BOT_PATTERNS = [
   "applebot", "semrushbot", "ahrefsbot", "mj12bot", "dotbot", "petalbot", "bytespider",
   "gptbot", "claudebot", "anthropic-ai", "ccbot", "cohere-ai", "perplexitybot",
   "pingdom", "uptimerobot", "statuscake", "site24x7", "newrelic", "datadog", "checkly", "freshping",
-  "vercel-healthcheck", "vercel-edge-functions",
+  "vercel-healthcheck", "vercel-edge-functions", "vercel-screenshot", "headlesschrome",
   "wget", "curl", "httpie", "python-requests", "go-http-client",
   "scrapy", "httpclient", "java/", "okhttp", "node-fetch", "undici",
 ];
