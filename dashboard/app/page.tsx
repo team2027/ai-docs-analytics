@@ -109,9 +109,11 @@ export default function Dashboard() {
         visits: string;
       }[];
 
+      const isAdmin = user?.isAdmin ?? false;
       const siteMap = new Map<string, { ai: number; human: number }>();
       for (const row of sitesData) {
         const isAllowed =
+          isAdmin ||
           !allowedHosts?.length ||
           allowedHosts.some((h) => row.host.includes(h));
         if (!isAllowed) continue;
@@ -205,11 +207,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {allowedHosts && allowedHosts.length > 0 && (
+      {user?.isAdmin ? (
+        <div className="mb-4 text-sm" style={{ color: 'var(--cream-dark)' }}>
+          admin — showing all sites
+        </div>
+      ) : allowedHosts && allowedHosts.length > 0 ? (
         <div className="mb-4 text-sm" style={{ color: 'var(--cream-dark)' }}>
           showing data for: {allowedHosts.join(", ")}
         </div>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="card-2027 rounded-lg p-6">

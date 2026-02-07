@@ -24,8 +24,19 @@ export const query = action({
       { userId }
     );
 
-    if (allowedHosts.length === 0) {
-      return { data: [] };
+    const isAdmin = allowedHosts.length === 0;
+
+    if (isAdmin) {
+      const url = new URL(`${API_URL}/query`);
+      url.searchParams.set("q", args.queryName);
+      if (args.host) {
+        url.searchParams.set("host", args.host);
+      }
+      const res = await fetch(url.toString(), {
+        headers: API_SECRET ? { "x-api-secret": API_SECRET } : {},
+      });
+      const json = await res.json();
+      return { data: (json.data as unknown[]) || [] };
     }
 
     let targetHosts = allowedHosts;

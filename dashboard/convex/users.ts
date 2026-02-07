@@ -2,6 +2,8 @@ import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+const ADMIN_EMAILS = ["theisease@gmail.com", "mika.sagindyk@gmail.com"];
+
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -23,6 +25,7 @@ export const currentUser = query({
       ...user,
       emailDomain,
       verifiedDomains: extraDomains.map((d) => d.host),
+      isAdmin: ADMIN_EMAILS.includes(user.email ?? ""),
     };
   },
 });
@@ -35,6 +38,10 @@ export const getAllowedHosts = query({
     
     const user = await ctx.db.get(userId);
     if (!user) return [];
+
+    if (ADMIN_EMAILS.includes(user.email ?? "")) {
+      return [];
+    }
     
     const emailDomain = user.email?.split("@")[1];
     const hosts: string[] = [];
@@ -60,6 +67,10 @@ export const internal_getAllowedHosts = internalQuery({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return [];
+
+    if (ADMIN_EMAILS.includes(user.email ?? "")) {
+      return [];
+    }
 
     const emailDomain = user.email?.split("@")[1];
     const hosts: string[] = [];
