@@ -14,6 +14,13 @@ export const QUERIES: Record<string, string> = {
     GROUP BY host, category
     ORDER BY visits DESC
   `,
+  "sites-24h": `
+    SELECT blob1 as host, blob3 as category, SUM(_sample_interval) as visits
+    FROM ai_docs_visits
+    WHERE timestamp > NOW() - INTERVAL '1' DAY AND double1 = 0
+    GROUP BY host, category
+    ORDER BY visits DESC
+  `,
   agents: `
     SELECT blob4 as agent, SUM(_sample_interval) as visits
     FROM ai_docs_visits

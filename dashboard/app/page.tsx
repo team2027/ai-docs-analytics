@@ -60,8 +60,10 @@ export default function Dashboard() {
   const { signOut } = useAuthActions();
 
   const [allSites, setAllSites] = useState<SiteData[]>([]);
+  const [allSites24h, setAllSites24h] = useState<SiteData[]>([]);
   const [selectedHost, setSelectedHost] = useState<string>("");
   const [sites, setSites] = useState<SiteData[]>([]);
+  const [sites24h, setSites24h] = useState<SiteData[]>([]);
   const [agents, setAgents] = useState<AgentData[]>([]);
   const [pages, setPages] = useState<PageData[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -83,12 +85,14 @@ export default function Dashboard() {
       setFeed(feedData);
       if (host) {
         setSites(allSites.filter((s) => s.host === host));
+        setSites24h(allSites24h.filter((s) => s.host === host));
       } else {
         setSites(allSites);
+        setSites24h(allSites24h);
       }
       setSwitching(false);
     },
-    [allSites, queryAnalytics]
+    [allSites, allSites24h, queryAnalytics]
   );
 
   useEffect(() => {
@@ -103,21 +107,15 @@ export default function Dashboard() {
     }
     if (user === undefined || allowedHosts === undefined) return;
 
-    async function init() {
-      const sitesResult = await queryAnalytics({ queryName: "sites" });
-      const sitesData = (sitesResult?.data ?? []) as {
-        host: string;
-        category: string;
-        visits: string;
-      }[];
-
-      const isAdmin = user?.isAdmin ?? false;
+    function parseSites(
+      rawData: { host: string; category: string; visits: string }[],
+      admin: boolean,
+      hosts: string[] | undefined,
+    ): SiteData[] {
       const siteMap = new Map<string, { ai: number; human: number }>();
-      for (const row of sitesData) {
+      for (const row of rawData) {
         const isAllowed =
-          isAdmin ||
-          !allowedHosts?.length ||
-          allowedHosts.some((h) => row.host.includes(h));
+          admin || !hosts?.length || hosts.some((h) => row.host.includes(h));
         if (!isAllowed) continue;
 
         const existing = siteMap.get(row.host) || { ai: 0, human: 0 };
@@ -139,8 +137,33 @@ export default function Dashboard() {
         })
       );
       formatted.sort((a, b) => b.ai_visits - a.ai_visits);
-      setAllSites(formatted);
-      setSites(formatted);
+      return formatted;
+    }
+
+    async function init() {
+      const [sitesResult, sites24hResult] = await Promise.all([
+        queryAnalytics({ queryName: "sites" }),
+        queryAnalytics({ queryName: "sites-24h" }),
+      ]);
+
+      type SiteRow = { host: string; category: string; visits: string };
+      const isAdmin = user?.isAdmin ?? false;
+
+      const formatted7d = parseSites(
+        (sitesResult?.data ?? []) as SiteRow[],
+        isAdmin,
+        allowedHosts,
+      );
+      const formatted24h = parseSites(
+        (sites24hResult?.data ?? []) as SiteRow[],
+        isAdmin,
+        allowedHosts,
+      );
+
+      setAllSites(formatted7d);
+      setSites(formatted7d);
+      setAllSites24h(formatted24h);
+      setSites24h(formatted24h);
       setLoading(false);
     }
     init();
@@ -173,8 +196,16 @@ export default function Dashboard() {
     );
   }
 
-  const totalAI = sites.reduce((sum, s) => sum + s.ai_visits, 0);
-  const totalHuman = sites.reduce((sum, s) => sum + s.human_visits, 0);
+  const totalAI_7d = sites.reduce((sum, s) => sum + s.ai_visits, 0);
+  const totalHuman_7d = sites.reduce((sum, s) => sum + s.human_visits, 0);
+  const totalAI_24h = sites24h.reduce((sum, s) => sum + s.ai_visits, 0);
+  const totalHuman_24h = sites24h.reduce((sum, s) => sum + s.human_visits, 0);
+  const aiPct_7d = totalAI_7d + totalHuman_7d > 0
+    ? Math.round((totalAI_7d / (totalAI_7d + totalHuman_7d)) * 100)
+    : 0;
+  const aiPct_24h = totalAI_24h + totalHuman_24h > 0
+    ? Math.round((totalAI_24h / (totalAI_24h + totalHuman_24h)) * 100)
+    : 0;
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -227,26 +258,44 @@ export default function Dashboard() {
         )}
         <div style={{ transition: 'filter 0.2s ease', filter: switching ? 'blur(2px)' : 'none' }}>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="card-2027 rounded-lg p-6">
+          <div className="label-style mb-2">AI Visits · 24h</div>
+          <div className="text-4xl font-medium" style={{ color: 'var(--cream)' }}>
+            {totalAI_24h.toLocaleString()}
+          </div>
+        </div>
+        <div className="card-2027 rounded-lg p-6">
+          <div className="label-style mb-2">Human Visits · 24h</div>
+          <div className="text-4xl font-medium" style={{ color: 'var(--cream-dim)' }}>
+            {totalHuman_24h.toLocaleString()}
+          </div>
+        </div>
+        <div className="card-2027 rounded-lg p-6">
+          <div className="label-style mb-2">AI % · 24h</div>
+          <div className="text-4xl font-medium" style={{ color: 'var(--cream)' }}>
+            {aiPct_24h}%
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="card-2027 rounded-lg p-6">
-          <div className="label-style mb-2">Total AI Visits</div>
+          <div className="label-style mb-2">AI Visits · 7d</div>
           <div className="text-4xl font-medium" style={{ color: 'var(--cream)' }}>
-            {totalAI.toLocaleString()}
+            {totalAI_7d.toLocaleString()}
           </div>
         </div>
         <div className="card-2027 rounded-lg p-6">
-          <div className="label-style mb-2">Total Human Visits</div>
+          <div className="label-style mb-2">Human Visits · 7d</div>
           <div className="text-4xl font-medium" style={{ color: 'var(--cream-dim)' }}>
-            {totalHuman.toLocaleString()}
+            {totalHuman_7d.toLocaleString()}
           </div>
         </div>
         <div className="card-2027 rounded-lg p-6">
-          <div className="label-style mb-2">AI Percentage</div>
+          <div className="label-style mb-2">AI % · 7d</div>
           <div className="text-4xl font-medium" style={{ color: 'var(--cream)' }}>
-            {totalAI + totalHuman > 0
-              ? Math.round((totalAI / (totalAI + totalHuman)) * 100)
-              : 0}
-            %
+            {aiPct_7d}%
           </div>
         </div>
       </div>
