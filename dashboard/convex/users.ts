@@ -4,6 +4,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 const ADMIN_EMAILS = ["theisease@gmail.com", "mika.sagindyk@gmail.com"];
 
+// Maps email domains to additional hosts the user should have access to
+const EXTRA_DOMAIN_ACCESS: Record<string, string[]> = {
+  "opral.com": ["inlang.com"],
+};
+
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -45,19 +50,20 @@ export const getAllowedHosts = query({
     
     const emailDomain = user.email?.split("@")[1];
     const hosts: string[] = [];
-    
+
     if (emailDomain) {
       hosts.push(emailDomain);
+      hosts.push(...(EXTRA_DOMAIN_ACCESS[emailDomain] ?? []));
     }
-    
+
     const extraDomains = await ctx.db
       .query("domains")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .filter((q) => q.neq(q.field("verifiedAt"), undefined))
       .collect();
-    
+
     hosts.push(...extraDomains.map((d) => d.host));
-    
+
     return hosts;
   },
 });
@@ -77,6 +83,7 @@ export const internal_getAllowedHosts = internalQuery({
 
     if (emailDomain) {
       hosts.push(emailDomain);
+      hosts.push(...(EXTRA_DOMAIN_ACCESS[emailDomain] ?? []));
     }
 
     const extraDomains = await ctx.db
