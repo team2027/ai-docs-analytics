@@ -7,6 +7,7 @@ const ADMIN_EMAILS = ["theisease@gmail.com", "mika.sagindyk@gmail.com"];
 // Maps email domains to additional hosts the user should have access to
 const EXTRA_DOMAIN_ACCESS: Record<string, string[]> = {
   "opral.com": ["inlang.com"],
+  "jamesrichardfry.com": ["clawgles.art"],
 };
 
 export const currentUser = query({
