@@ -53,6 +53,14 @@ const COLORS = [
   "#6d6962",
 ];
 
+const TEST_HOSTS = ["localhost", "test.com", "example.com"];
+
+function isTestHost(host: string): boolean {
+  return TEST_HOSTS.some(
+    (t) => host === t || host.startsWith(`${t}:`) || host.endsWith(`.${t}`)
+  );
+}
+
 export default function Dashboard() {
   const user = useQuery(api.users.currentUser);
   const allowedHosts = useQuery(api.users.getAllowedHosts);
@@ -221,11 +229,13 @@ export default function Dashboard() {
             className="select-2027 rounded-lg px-4 py-2"
           >
             <option value="">All Sites</option>
-            {allSites.map((s) => (
-              <option key={s.host} value={s.host}>
-                {s.host}
-              </option>
-            ))}
+            {allSites
+              .filter((s) => !isTestHost(s.host))
+              .map((s) => (
+                <option key={s.host} value={s.host}>
+                  {s.host}
+                </option>
+              ))}
           </select>
           <div className="flex items-center gap-3 text-sm">
             <span style={{ color: 'var(--cream-dim)' }}>{user.email}</span>
