@@ -4,6 +4,21 @@ import { classify, isPageView } from "./detect";
 import { generateEventId, writeRawEvent, writeVisit, type Env } from "./db";
 import { runQuery, QUERIES } from "./queries";
 
+const TEST_HOSTS = ["localhost", "test.com", "example.com"];
+
+function isTestHost(host: string): boolean {
+  return TEST_HOSTS.some(
+    (t) => host === t || host.startsWith(`${t}:`) || host.endsWith(`.${t}`)
+  );
+}
+
+function getRootDomain(host: string): string {
+  const withoutPort = host.split(":")[0];
+  const parts = withoutPort.split(".");
+  if (parts.length <= 2) return withoutPort;
+  return parts.slice(-2).join(".");
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("/*", cors());
@@ -79,24 +94,37 @@ app.get("/stats", async (c) => {
   }
 
   const [result24h, result7d] = await Promise.all([
-    runQuery(accountId, apiToken, "stats-24h"),
-    runQuery(accountId, apiToken, "stats-7d"),
+    runQuery(accountId, apiToken, "sites-24h"),
+    runQuery(accountId, apiToken, "sites"),
   ]);
 
-  const row24h = ((result24h.data as Record<string, string>[]) ?? [])[0];
-  const row7d = ((result7d.data as Record<string, string>[]) ?? [])[0];
+  function processStats(rows: Record<string, string | number>[]): { sites: number; ai: number; human: number } {
+    const rootDomains = new Set<string>();
+    let ai = 0;
+    let human = 0;
+
+    for (const row of rows) {
+      const host = String(row.host ?? "");
+      if (isTestHost(host)) continue;
+
+      rootDomains.add(getRootDomain(host));
+      const visits = Number(row.visits ?? 0);
+      if (row.category === "coding-agent") {
+        ai += visits;
+      } else if (row.category === "human") {
+        human += visits;
+      }
+    }
+
+    return { sites: rootDomains.size, ai, human };
+  }
+
+  const stats24h = processStats((result24h.data as Record<string, string | number>[]) ?? []);
+  const stats7d = processStats((result7d.data as Record<string, string | number>[]) ?? []);
 
   return c.json({
-    "24h": {
-      sites: Number(row24h?.sites ?? 0),
-      ai: Number(row24h?.ai ?? 0),
-      human: Number(row24h?.human ?? 0),
-    },
-    "7d": {
-      sites: Number(row7d?.sites ?? 0),
-      ai: Number(row7d?.ai ?? 0),
-      human: Number(row7d?.human ?? 0),
-    },
+    "24h": stats24h,
+    "7d": stats7d,
   });
 });
 
